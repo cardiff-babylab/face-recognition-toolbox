@@ -12,10 +12,10 @@ The toolbox currently supports two powerful face recognition models:
 - RetinaFace: A robust face detection model that excels in identifying faces in various poses, scales, and lighting conditions. RetinaFace is particularly useful for detecting faces in challenging environments or when dealing with diverse participant demographics.
 ## Value for Developmental Psychologists
 This toolbox addresses several key needs in developmental psychology research:
-Efficiency: Automates the time-consuming process of manual face detection in video and image data.
-Accessibility: Provides a user-friendly interface, making advanced face recognition technology accessible to researchers without extensive programming experience.
-Flexibility: Allows researchers to easily switch between different face recognition models to suit their specific research needs.
-Reproducibility: Ensures consistent application of face detection criteria across studies, enhancing research reproducibility.
+- Efficiency: Automates the time-consuming process of manual face detection in video and image data.
+- Accessibility: Provides a user-friendly interface, making advanced face recognition technology accessible to researchers without extensive programming experience.
+- Flexibility: Allows researchers to easily switch between different face recognition models to suit their specific research needs.
+- Reproducibility: Ensures consistent application of face detection criteria across studies, enhancing research reproducibility.
 ## Development and Contributions
 This toolbox is actively developed by the Cardiff University BabyLab, a research group dedicated to exploring attentional and motor skills in young children and their impact on learning in everyday settings. We welcome contributions from the developmental psychology community to enhance and expand the capabilities of this toolbox.
 
