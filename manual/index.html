@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title> TinyExplorer Face Recognition Toolbox User Guide</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+            color: #404040;
+        }
+        .sidebar {
+            width: 300px;
+            background-color: #f3f4f7;
+            padding: 20px;
+            overflow-y: auto;
+            height: 100vh;
+            position: fixed;
+            left: 0;
+            top: 0;
+            box-sizing: border-box;
+        }
+        .content {
+            flex-grow: 1;
+            padding: 20px;
+            max-width: 800px;
+            margin-left: 300px;
+            box-sizing: border-box;
+        }
+        h1, h2, h3 {
+            color: #d61010;
+        }
+        .menu {
+            list-style-type: none;
+            padding: 0;
+        }
+        .menu li {
+            margin-bottom: 10px;
+        }
+        .menu a {
+            color: #404040;
+            text-decoration: none;
+            display: block;
+            padding: 5px 0;
+        }
+        .menu a:hover {
+            color: #db0f0f;
+        }
+        .submenu {
+            list-style-type: none;
+            padding-left: 20px;
+            display: none;
+        }
+        .submenu.active {
+            display: block;
+        }
+        .menu > li > a {
+            font-weight: bold;
+        }
+        code {
+            background-color: #f8f8f8;
+            border: 1px solid #e1e4e5;
+            border-radius: 4px;
+            padding: 2px 5px;
+            font-family: SFMono-Regular, Menlo, Monaco, Consolas, Liberation Mono, Courier New, monospace;
+        }
+        header {
+            background-color: #fff;
+            padding: 20px;
+            text-align: center;
+            border-bottom: 1px solid #ddd;
+        }
+        nav {
+            background-color: #f8f8f8;
+            padding: 10px 0;
+            text-align: center;
+        }
+        nav a {
+            color: #333;
+            text-decoration: none;
+            padding: 10px 15px;
+        }
+        main {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        h1 {
+            color: #b92929;
+            text-align: center;
+            font-size: 2.5em;
+        }
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+        .feature-card {
+            border: 1px solid #ddd;
+            padding: 20px;
+            text-align: center;
+        }
+        .feature-card img {
+            max-width: 100%;
+            height: auto;
+        }
+        footer {
+            background-color: #2980b9;
+            color: white;
+            text-align: center;
+            padding: 20px;
+            margin-top: 40px;
+        }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <h2>Face Recognition Toolbox</h2>
+        <ul class="menu">
+            <li><a href="#" data-page="getting-started">Getting Started</a>
+                <ul class="submenu">
+                    <li><a href="#installation">Installation</a></li>
+                    <li><a href="#launching">Launching the Application</a></li>
+                    <li><a href="#interface-overview">Interface Overview</a></li>
+                </ul>
+            </li>
+            <li><a href="#" data-page="main-features">Main Features</a>
+                <ul class="submenu">
+                    <li><a href="#file-selection">File and Folder Selection</a></li>
+                    <li><a href="#model-selection">Model Selection</a></li>
+                    <li><a href="#confidence-threshold">Confidence Threshold</a></li>
+                    <li><a href="#start-recognition">Starting Recognition</a></li>
+                </ul>
+            </li>
+            <li><a href="#" data-page="understanding-results">Understanding Results</a>
+                <ul class="submenu">
+                    <li><a href="#result-display">Result Display</a></li>
+                    <li><a href="#csv-output">CSV Output</a></li>
+                    <li><a href="#image-output">Image Output</a></li>
+                </ul>
+            </li>
+            <li><a href="#" data-page="advanced-options">Advanced Options</a>
+                <ul class="submenu">
+                    <li><a href="#batch-processing">Batch Processing</a></li>
+                </ul>
+            </li>
+            <li><a href="#" data-page="troubleshooting">Troubleshooting</a>
+                <ul class="submenu">
+                    <li><a href="#common-issues">Common Issues</a></li>
+                    <li><a href="#error-messages">Error Messages</a></li>
+                    <li><a href="#faqs">FAQs</a></li>
+                </ul>
+            </li>
+            <li><a href="#" data-page="support">Support and Updates</a>
+                <ul class="submenu">
+                    <li><a href="#get-help">Getting Help</a></li>
+                    <li><a href="#updates">Checking for Updates</a></li>
+                </ul>
+            </li>
+        </ul>
+    </div>
+    <div id="content" class="content">
+        <!-- Content will be loaded here dynamically -->
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            var menuItems = document.querySelectorAll('.menu > li > a');
+            var contentDiv = document.getElementById('content');
+
+            menuItems.forEach(function(item) {
+                item.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    var page = this.getAttribute('data-page');
+                    loadPage(page);
+
+                    // Toggle submenu
+                    var submenu = this.nextElementSibling;
+                    if (submenu) {
+                        submenu.classList.toggle('active');
+                    }
+                });
+            });
+
+            function loadPage(page) {
+                fetch(page + '.html')
+                    .then(response => response.text())
+                    .then(html => {
+                        contentDiv.innerHTML = html;
+                    })
+                    .catch(error => {
+                        console.error('Error loading page:', error);
+                        contentDiv.innerHTML = '<p>Error loading content. Please try again.</p>';
+                    });
+            }
+
+            // Load the initial page (e.g., Getting Started)
+            loadPage('getting-started');
+        });
+    </script>
+</body>
+</html>
