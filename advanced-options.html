@@ -1,0 +1,42 @@
+<div style="text-align: center; margin-bottom: 25px;">
+    <img src="graphics/icon_Z71_icon.png" alt="Face Recognition Toolbox Icon" style="width: 70px; height: auto; margin-bottom: 10px;">
+    <h1>Advanced Options</h1>
+</div>
+
+<h2 id="batch-processing">Batch Processing</h2>
+<p>The Face Recognition Toolbox supports batch processing of multiple files, allowing you to process large datasets efficiently:</p>
+
+<div style="display: flex; align-items: center; justify-content: center; margin: 20px 0;">
+    <div style="flex: 1; padding: 20px;">
+        <h3>How to Use Batch Processing</h3>
+        <ol>
+            <li>Select "Folder" instead of "File" in the input selection section.</li>
+            <li>Browse and select the folder containing your images and/or videos.</li>
+            <li>Choose your preferred detection model and adjust the confidence threshold.</li>
+            <li>Click "Start Detection" to begin processing all supported files in the folder.</li>
+            <li>The application will create a single results folder containing:
+                <ul>
+                    <li>Processed images for all files</li>
+                    <li>A comprehensive CSV file with all detection data</li>
+                    <li>A summary CSV with statistics for all processed files</li>
+                </ul>
+            </li>
+        </ol>
+    </div>
+    <div style="flex: 1; text-align: center;">
+        <img src="graphics/screenshot.png" alt="Batch Processing" style="max-width: 90%; height: auto; border: 1px solid #ddd; border-radius: 5px; box-shadow: 0 0 10px rgba(0,0,0,0.1);">
+        <p><em>Select a folder for batch processing</em></p>
+    </div>
+</div>
+
+<h2>Performance Considerations</h2>
+<p>When processing large batches of files, consider the following tips to optimize performance:</p>
+<ul>
+    <li><strong>Model Selection:</strong> For faster processing, choose YOLOv8n-face. For higher accuracy, use YOLOv8l-face.</li>
+    <li><strong>Video Processing:</strong> Processing videos requires more time than images. Consider your hardware capabilities when batch processing multiple video files.</li>
+    <li><strong>Memory Usage:</strong> The application may use significant memory when processing high-resolution images or videos. Close other memory-intensive applications for best performance.</li>
+</ul>
+
+<div style="text-align: center; margin-top: 30px;">
+    <img src="graphics/toolbox_splash.png" alt="Face Recognition Toolbox" style="max-width: 250px; height: auto;">
+</div>
