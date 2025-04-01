@@ -1,4 +1,4 @@
-# TinyExplorer Face Recognition Toolbox
+# TinyExplorer Face Detection App
 
 > ⚠️ **BETA STATUS** ⚠️
 > 
