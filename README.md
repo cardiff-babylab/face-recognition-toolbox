@@ -1,5 +1,10 @@
 # TinyExplorer Face Recognition Toolbox
 
+> ⚠️ **BETA STATUS** ⚠️
+> 
+> This software is currently in beta testing. Features and functionality may change as development continues.  
+> **Coming Soon:** macOS version release planned for the near future. Currently available for Windows only.
+
 ## Overview
 
 The TinyExplorer Face Recognition Toolbox is a user-friendly graphical interface designed specifically for developmental psychologists working with infants and young children. This toolbox integrates state-of-the-art open-source face recognition algorithms into an easy-to-use software package, streamlining the process of analyzing facial data in developmental research.
@@ -11,12 +16,16 @@ The TinyExplorer Face Recognition Toolbox is a user-friendly graphical interface
 - Batch processing capabilities for efficient analysis of large datasets
 - Customizable confidence thresholds for detection accuracy
 
+![TinyExplorer Face Recognition Toolbox Screenshot](graphics/screenshot.png)
+
 ## Face Recognition Models
 
 The toolbox currently supports two powerful face recognition models:
 
 - YOLOv8: A real-time object detection system that can identify and locate faces in images with high accuracy. YOLOv8 is known for its speed and precision, making it ideal for processing large volumes of data.
 - RetinaFace: A robust face detection model that excels in identifying faces in various poses, scales, and lighting conditions. RetinaFace is particularly useful for detecting faces in challenging environments or when dealing with diverse participant demographics.
+
+> 🔜 **Coming Soon:** Integration with YOLOv11, the latest version of the YOLO object detection system, offering improved accuracy and performance.
   
 ## Value for Developmental Psychologists
 

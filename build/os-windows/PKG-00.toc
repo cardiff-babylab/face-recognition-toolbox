@@ -1,0 +1,89 @@
+('C:\\Users\\Tamas Foldes\\OneDrive - '
+ 'Nexus365\\Documents\\Projects\\face_recognition_toolbox\\build\\os-windows\\TinyExplorer '
+ 'FaceRecognitionApp.pkg',
+ {'BINARY': True,
+  'DATA': True,
+  'EXECUTABLE': True,
+  'EXTENSION': True,
+  'PYMODULE': True,
+  'PYSOURCE': True,
+  'PYZ': False,
+  'SPLASH': True,
+  'SYMLINK': False},
+ [('pyi-contents-directory _internal', '', 'OPTION'),
+  ('PYZ-00.pyz',
+   'C:\\Users\\Tamas Foldes\\OneDrive - '
+   'Nexus365\\Documents\\Projects\\face_recognition_toolbox\\build\\os-windows\\PYZ-00.pyz',
+   'PYZ'),
+  ('struct',
+   'C:\\Users\\Tamas Foldes\\OneDrive - '
+   'Nexus365\\Documents\\Projects\\face_recognition_toolbox\\build\\os-windows\\localpycs\\struct.pyc',
+   'PYMODULE'),
+  ('pyimod01_archive',
+   'C:\\Users\\Tamas Foldes\\OneDrive - '
+   'Nexus365\\Documents\\Projects\\face_recognition_toolbox\\build\\os-windows\\localpycs\\pyimod01_archive.pyc',
+   'PYMODULE'),
+  ('pyimod02_importers',
+   'C:\\Users\\Tamas Foldes\\OneDrive - '
+   'Nexus365\\Documents\\Projects\\face_recognition_toolbox\\build\\os-windows\\localpycs\\pyimod02_importers.pyc',
+   'PYMODULE'),
+  ('pyimod03_ctypes',
+   'C:\\Users\\Tamas Foldes\\OneDrive - '
+   'Nexus365\\Documents\\Projects\\face_recognition_toolbox\\build\\os-windows\\localpycs\\pyimod03_ctypes.pyc',
+   'PYMODULE'),
+  ('pyimod04_pywin32',
+   'C:\\Users\\Tamas Foldes\\OneDrive - '
+   'Nexus365\\Documents\\Projects\\face_recognition_toolbox\\build\\os-windows\\localpycs\\pyimod04_pywin32.pyc',
+   'PYMODULE'),
+  ('pyiboot01_bootstrap',
+   'C:\\Users\\Tamas '
+   'Foldes\\.conda\\envs\\dev\\lib\\site-packages\\PyInstaller\\loader\\pyiboot01_bootstrap.py',
+   'PYSOURCE'),
+  ('pyi_rth_inspect',
+   'C:\\Users\\Tamas '
+   'Foldes\\.conda\\envs\\dev\\Lib\\site-packages\\PyInstaller\\hooks\\rthooks\\pyi_rth_inspect.py',
+   'PYSOURCE'),
+  ('pyi_rth_pkgutil',
+   'C:\\Users\\Tamas '
+   'Foldes\\.conda\\envs\\dev\\Lib\\site-packages\\PyInstaller\\hooks\\rthooks\\pyi_rth_pkgutil.py',
+   'PYSOURCE'),
+  ('pyi_rth_multiprocessing',
+   'C:\\Users\\Tamas '
+   'Foldes\\.conda\\envs\\dev\\Lib\\site-packages\\PyInstaller\\hooks\\rthooks\\pyi_rth_multiprocessing.py',
+   'PYSOURCE'),
+  ('pyi_rth_pkgres',
+   'C:\\Users\\Tamas '
+   'Foldes\\.conda\\envs\\dev\\Lib\\site-packages\\PyInstaller\\hooks\\rthooks\\pyi_rth_pkgres.py',
+   'PYSOURCE'),
+  ('pyi_rth_mplconfig',
+   'C:\\Users\\Tamas '
+   'Foldes\\.conda\\envs\\dev\\Lib\\site-packages\\PyInstaller\\hooks\\rthooks\\pyi_rth_mplconfig.py',
+   'PYSOURCE'),
+  ('pyi_rth_tensorflow',
+   'C:\\Users\\Tamas '
+   'Foldes\\.conda\\envs\\dev\\Lib\\site-packages\\_pyinstaller_hooks_contrib\\rthooks\\pyi_rth_tensorflow.py',
+   'PYSOURCE'),
+  ('pyi_rth_setuptools',
+   'C:\\Users\\Tamas '
+   'Foldes\\.conda\\envs\\dev\\Lib\\site-packages\\PyInstaller\\hooks\\rthooks\\pyi_rth_setuptools.py',
+   'PYSOURCE'),
+  ('pyi_rth__tkinter',
+   'C:\\Users\\Tamas '
+   'Foldes\\.conda\\envs\\dev\\Lib\\site-packages\\PyInstaller\\hooks\\rthooks\\pyi_rth__tkinter.py',
+   'PYSOURCE'),
+  ('main',
+   'C:\\Users\\Tamas Foldes\\OneDrive - '
+   'Nexus365\\Documents\\Projects\\face_recognition_toolbox\\main.py',
+   'PYSOURCE'),
+  ('Splash-00.res',
+   'C:\\Users\\Tamas Foldes\\OneDrive - '
+   'Nexus365\\Documents\\Projects\\face_recognition_toolbox\\build\\os-windows\\Splash-00.res',
+   'SPLASH')],
+ 'python39.dll',
+ True,
+ False,
+ False,
+ [],
+ None,
+ None,
+ None)

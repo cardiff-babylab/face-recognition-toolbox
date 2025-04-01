@@ -253,6 +253,7 @@ class FaceRecognitionApp:
         Thread(target=self.recognize_faces).start()
 
     def download_and_init_model(self):
+        self.update_status("Downloading and initializing model...")
         if "yolov8" in self.model_type.lower():
             FaceRecognitionApp.download_yolo_model(self.model_path)
             self.model = YOLO(self.model_path).to('cuda:0' if torch.cuda.is_available() else 'cpu')
@@ -392,7 +393,7 @@ class FaceRecognitionApp:
                     faces = self.recognize_with_yolo(file_path, result_folder)
                 else:
                     faces = self.recognize_with_retinaface(file_path, result_folder)
-                summary = [os.path.basename(file_path),  'image', 'N/A', 'N/A', 1, 'N/A', self.model_path, self.confidence]
+                summary = [file_path,  'image', 'N/A', 'N/A', 1, 'N/A', self.model_path, self.confidence]
 
             if file_path.lower().endswith(('.jpg', '.jpeg', '.png', '.bmp')): 
                 print(f"Faces detected: {len(faces)}")
@@ -472,7 +473,7 @@ class FaceRecognitionApp:
 
                 processed_frames += 1
                 # total_processed_video_frames += 1
-                temp_file_path = os.path.join(result_folder, f'{os.path.splitext(os.path.basename(video_path))[0]}_{os.path.splitext(os.path.basename(video_path))[1][1:]}_{frame_idx}_{(frame_idx / fps)+1}.jpg')
+                temp_file_path = os.path.join(result_folder, f'{os.path.splitext(os.path.basename(video_path))[0]}_{os.path.splitext(os.path.basename(video_path))[1][1:]}_{frame_idx}_{int(frame_idx / fps)+1}.jpg')
                 cv2.imwrite(temp_file_path, frame)
 
                 if self.model_type == "YOLOv8":
@@ -488,7 +489,7 @@ class FaceRecognitionApp:
                     frames_with_faces += 1
 
                     row = {
-                        'filename': f'{os.path.basename(video_path)}_{frame_idx}_{(frame_idx / fps)+1}',
+                        'filename': f'{os.path.basename(video_path)}_{frame_idx}_{int(frame_idx / fps)+1}',
                         'face_detected': 1 if num_faces > 0 else 0,
                         'face_count': num_faces
                     }
@@ -504,7 +505,7 @@ class FaceRecognitionApp:
 
                 else:
                     results.append({
-                    'filename': f'{os.path.splitext(os.path.basename(video_path))[0]}_{os.path.splitext(os.path.basename(video_path))[1][1:]}_{frame_idx}_{(frame_idx / fps)+1}.jpg',
+                    'filename': f'{os.path.splitext(os.path.basename(video_path))[0]}_{os.path.splitext(os.path.basename(video_path))[1][1:]}_{frame_idx}_{int(frame_idx / fps)+1}.jpg',
                     'face_detected': 0,
                     'face_count': 0
                 })
@@ -573,7 +574,7 @@ class FaceRecognitionApp:
                 images_with_faces += 1
                 
                 row = {
-                    'filename': image_file,
+                    'filename': os.path.basename(image_file),
                     'face_detected': 1 if num_faces > 0 else 0,
                     'face_count': num_faces
                 }
@@ -588,7 +589,7 @@ class FaceRecognitionApp:
                 results.append(row)
             else:
                 results.append({
-                    'filename': image_file,
+                    'filename': os.path.basename(image_file),
                     'face_detected': 0,
                     'face_count': 0
                 })
@@ -619,7 +620,7 @@ class FaceRecognitionApp:
                     break
 
                 total_processed_video_frames += 1
-                temp_file_path = os.path.join(result_folder, f'{os.path.splitext(os.path.basename(video_file))[0]}_{os.path.splitext(os.path.basename(video_file))[1][1:]}_{frame_idx}_{(frame_idx / fps)+1}.jpg')
+                temp_file_path = os.path.join(result_folder, f'{os.path.splitext(os.path.basename(video_file))[0]}_{os.path.splitext(os.path.basename(video_file))[1][1:]}_{frame_idx}_{int(frame_idx / fps)+1}.jpg')
                 cv2.imwrite(temp_file_path, frame)
 
                 if self.model_type == "YOLOv8":
@@ -635,7 +636,7 @@ class FaceRecognitionApp:
                     frames_with_faces += 1
 
                     row = {
-                        'filename': f'{os.path.splitext(os.path.basename(video_file))[0]}_{os.path.splitext(os.path.basename(video_file))[1][1:]}_{frame_idx}_{(frame_idx / fps)+1}.jpg',
+                        'filename': f'{os.path.splitext(os.path.basename(video_file))[0]}_{os.path.splitext(os.path.basename(video_file))[1][1:]}_{frame_idx}_{int((frame_idx / fps) + 1)}.jpg',
                         'face_detected': 1 if num_faces > 0 else 0,
                         'face_count': num_faces
                     }
@@ -651,7 +652,7 @@ class FaceRecognitionApp:
 
                 else:
                     results.append({
-                    'filename': f'{os.path.basename(video_file)}_{frame_idx}_{(frame_idx / fps)+1}',
+                    'filename': f'{os.path.splitext(os.path.basename(video_file))[0]}_{os.path.splitext(os.path.basename(video_file))[1][1:]}_{frame_idx}_{int((frame_idx / fps) + 1)}.jpg',
                     'face_detected': 0,
                     'face_count': 0
                 })
@@ -664,12 +665,12 @@ class FaceRecognitionApp:
         # caclulate face percentage
         if len(image_files) > 0:
             face_percentage_images = (images_with_faces / len(image_files)) * 100 if len(image_files) > 0 else 0
-            summary_images = [os.path.basename(folder_path), 'image(s)', len(image_files), 'N/A', images_with_faces, face_percentage_images, self.model_path, self.confidence]
+            summary_images = [folder_path, 'image(s)', len(image_files), 'N/A', images_with_faces, face_percentage_images, self.model_path, self.confidence]
             summary_data.append(summary_images)
             
         if len(video_files) > 0:
             face_percentage_videos = (frames_with_faces / total_processed_video_frames) * 100 if total_processed_video_frames > 0 else 0
-            summary_videos = [os.path.basename(folder_path), 'video(s)', total_processed_video_frames, total_duration, frames_with_faces, face_percentage_videos, self.model_path, self.confidence]
+            summary_videos = [folder_path, 'video(s)', total_processed_video_frames, total_duration, frames_with_faces, face_percentage_videos, self.model_path, self.confidence]
             summary_data.append(summary_videos)
 
         # Create DataFrame and save to CSV
