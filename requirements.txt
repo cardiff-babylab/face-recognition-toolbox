@@ -1,0 +1,8 @@
+pandas
+ultralytics
+opencv-python
+torch
+requests
+tqdm
+retina-face
+tf-keras

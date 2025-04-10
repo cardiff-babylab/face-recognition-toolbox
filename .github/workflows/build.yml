@@ -1,0 +1,107 @@
+name: Build Application
+
+on:
+  push:
+    branches: [ main, master ]
+    tags:
+      - 'v*'
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+          cache: 'pip'
+      
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pyinstaller
+          pip install torch torchvision --index-url https://download.pytorch.org/whl/cu118
+          pip install -r requirements.txt
+      
+      - name: Build with PyInstaller
+        run: |
+          pyinstaller FaceDetectionApp.spec
+      
+      - name: Upload Windows artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: FaceDetectionApp-Windows
+          path: dist/FaceDetectionApp.exe
+          retention-days: 7
+
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+          cache: 'pip'
+      
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-3-dev libx11-dev libxcb1-dev libxext-dev libxrandr-dev libxcursor-dev libxi-dev libxinerama-dev libxxf86vm-dev libxkbcommon-dev libgl1-mesa-dev
+      
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pyinstaller
+          pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
+          pip install -r requirements.txt
+      
+      - name: Build with PyInstaller
+        run: |
+          pyinstaller FaceDetectionApp.spec
+      
+      - name: Upload Linux artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: FaceDetectionApp-Linux
+          path: dist/FaceDetectionApp
+          retention-days: 7
+
+  create-release:
+    needs: [build-windows, build-linux]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    steps:
+      - name: Download Windows artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: FaceDetectionApp-Windows
+          path: ./windows
+      
+      - name: Download Linux artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: FaceDetectionApp-Linux
+          path: ./linux
+
+      - name: Zip artifacts
+        run: |
+          cd windows && zip -r ../FaceDetectionApp-Windows.zip . && cd ..
+          cd linux && zip -r ../FaceDetectionApp-Linux.zip . && cd ..
+      
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            FaceDetectionApp-Windows.zip
+            FaceDetectionApp-Linux.zip
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} 

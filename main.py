@@ -54,11 +54,11 @@ class TextRedirector:
     def flush(self):
         pass
 
-# Face recognition application class
-class FaceRecognitionApp:
+# Face detection application class
+class FaceDetectionApp:
     def __init__(self, root):
         self.root = root
-        self.root.title("Face Recognition App")
+        self.root.title("TinyExplorer Face Detection App")
         self.root.geometry("800x600")  # Set initial window size
         self.root.minsize(600, 400)  # Set minimum window size
         
@@ -76,6 +76,23 @@ class FaceRecognitionApp:
         self.model_path = "yolov8l-face.pt"  # Default model path
         self.model_type = "YOLOv8"  # Default model type
         self.save_dir = ""  # Directory to save results
+        
+        # Unicode status symbols
+        self.status_symbols = {
+            "info": "ℹ️ ",
+            "success": "✅ ",
+            "error": "❌ ",
+            "warning": "⚠️ ",
+            "processing": "⏳ ",
+            "download": "📥 ",
+            "folder": "📁 ",
+            "image": "🖼️ ",
+            "video": "🎬 ",
+            "detection": "🔍 ",
+            "face": "👤 ",
+            "progress": "🔄 ",
+            "complete": "🏁 "
+        }
 
         # Create UI elements
         self.create_widgets()
@@ -119,7 +136,7 @@ class FaceRecognitionApp:
         self.model_label = tk.Label(left_frame, text="Select Model:")
         self.model_label.pack(anchor=tk.W, pady=(0, 5))
 
-        self.model_combobox = ttk.Combobox(left_frame, values=["yolov8n-face.pt", "yolov8m-face.pt", "yolov8l-face.pt", "RetinaFace"], width=28)  # Reduce width
+        self.model_combobox = ttk.Combobox(left_frame, values=["yolov8n-face.pt", "yolov8m-face.pt", "yolov8l-face.pt", "yolov11m-face.pt", "yolov11l-face.pt", "RetinaFace"], width=28)  # Reduce width
         self.model_combobox.pack(fill=tk.X, pady=(0, 5))
         self.model_combobox.current(2)  # Set default value
         self.model_combobox.bind("<<ComboboxSelected>>", self.update_model)
@@ -133,7 +150,7 @@ class FaceRecognitionApp:
         self.conf_slider.set(0.7)
 
         # Start button
-        self.start_button = tk.Button(left_frame, text="Start Recognition", command=self.start_recognition)
+        self.start_button = tk.Button(left_frame, text="Start Detection", command=self.start_detection)
         self.start_button.pack(fill=tk.X, pady=(0, 10))
 
         # Progress bar container
@@ -152,7 +169,10 @@ class FaceRecognitionApp:
         text_frame = tk.Frame(right_frame)
         text_frame.pack(fill=tk.BOTH, expand=True)
 
-        self.result_text = tk.Text(text_frame, height=20, width=60)  # Reduce width
+        # Use a font that supports Unicode characters
+        text_font = ('Segoe UI', 10)  # Windows default font with good Unicode support
+        
+        self.result_text = tk.Text(text_frame, height=20, width=60, font=text_font)
         self.result_text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         self.result_text.configure(state='disabled')  # Make it read-only
 
@@ -175,7 +195,7 @@ class FaceRecognitionApp:
             self.file_paths = [file_path]
             self.folder_path.delete(0, tk.END)
             self.folder_path.insert(0, file_path)
-            self.update_status(f"Selected file: {file_path}")
+            self.update_status(f"Selected file: {file_path}", "info")
 
     # Browse folder
     def browse_folder(self):
@@ -184,7 +204,7 @@ class FaceRecognitionApp:
             self.file_paths = [folder_path]
             self.folder_path.delete(0, tk.END)
             self.folder_path.insert(0, folder_path)
-            self.update_status(f"Selected folder: {folder_path}")
+            self.update_status(f"Selected folder: {folder_path}", "folder")
 
     # Update confidence value
     def update_conf_value(self, val):
@@ -198,7 +218,7 @@ class FaceRecognitionApp:
             self.model_path = selected_model
             self.conf_slider.set(0.9)  # Set default confidence for RetinaFace
         else:
-            self.model_type = "YOLOv8"
+            self.model_type = "YOLOv8" if "yolov8" in selected_model else "YOLOv11"
             self.model_path = selected_model
             if selected_model == "yolov8n-face.pt":
                 self.conf_slider.set(0.3)  # Set default confidence for YOLOv8-nano
@@ -206,16 +226,32 @@ class FaceRecognitionApp:
                 self.conf_slider.set(0.5)  # Set default confidence for YOLOv8-medium
             elif selected_model == "yolov8l-face.pt":
                 self.conf_slider.set(0.7)  # Set default confidence for YOLOv8-large
+            elif selected_model == "yolov11m-face.pt":
+                self.conf_slider.set(0.6)  # Set default confidence for YOLOv11-medium
+            elif selected_model == "yolov11l-face.pt":
+                self.conf_slider.set(0.8)  # Set default confidence for YOLOv11-large
         
         # Update the confidence value
         self.update_conf_value(self.conf_slider.get())
     
     def update_progress(self, value):
-    # Ensure the value is between 0 and 100
+        # Ensure the value is between 0 and 100
         progress_percent = max(0, min(value, 100))
         
         self.progress['value'] = progress_percent
         self.progress_label.config(text=f"{int(progress_percent)}%")
+        
+        # Update status with progress message at certain intervals
+        if progress_percent % 25 == 0 and progress_percent > 0:
+            if progress_percent == 25:
+                self.update_status(f"Processing: {int(progress_percent)}% complete", "progress")
+            elif progress_percent == 50:
+                self.update_status(f"Halfway there: {int(progress_percent)}% complete", "progress")
+            elif progress_percent == 75:
+                self.update_status(f"Almost done: {int(progress_percent)}% complete", "progress")
+            elif progress_percent == 100:
+                self.update_status(f"Processing complete: {int(progress_percent)}%", "success")
+                
         self.root.update_idletasks()
 
     # Reset stdout and stderr redirection
@@ -223,8 +259,8 @@ class FaceRecognitionApp:
         sys.stdout = sys.__stdout__
         sys.stderr = sys.__stderr__
 
-    # Start recognition
-    def start_recognition(self):
+    # Start detection
+    def start_detection(self):
         if not self.file_paths:
             messagebox.showerror("Error", "Please select a file or folder")
             return
@@ -236,7 +272,7 @@ class FaceRecognitionApp:
 
         self.start_button.config(state=tk.DISABLED)
         self.progress['value'] = 0
-        self.update_status("Starting face recognition process...")
+        self.update_status("Starting face detection process...", "detection")
 
         # Reset stdout and stderr redirection
         self.reset_stdout_stderr()
@@ -249,13 +285,13 @@ class FaceRecognitionApp:
             self.start_button.config(state=tk.NORMAL)
             return
 
-        # Start the recognition process in a separate thread
-        Thread(target=self.recognize_faces).start()
+        # Start the detection process in a separate thread
+        Thread(target=self.detect_faces).start()
 
     def download_and_init_model(self):
-        self.update_status("Downloading and initializing model...")
-        if "yolov8" in self.model_type.lower():
-            FaceRecognitionApp.download_yolo_model(self.model_path)
+        self.update_status("Downloading and initializing model...", "download")
+        if "yolov8" in self.model_path.lower() or "yolov11" in self.model_path.lower():
+            FaceDetectionApp.download_yolo_model(self.model_path)
             self.model = YOLO(self.model_path).to('cuda:0' if torch.cuda.is_available() else 'cpu')
         else:
             # Initialize RetinaFace model if needed
@@ -293,9 +329,13 @@ class FaceRecognitionApp:
                     face = {'x': x_center, 'y': y_center, 'width': width, 'height': height, 'confidence': confidence}
                     faces.append(face)
                     print(face)
+            
+            # Update status with face detection results
+            if len(faces) > 0:
+                self.update_status(f"Detected {len(faces)} {'face' if len(faces) == 1 else 'faces'} in {os.path.basename(file_path)}", "face")
         else:
+            self.update_status(f"No faces detected in {os.path.basename(file_path)}", "info")
             print("No faces detected.")
-
 
         return faces
 
@@ -319,6 +359,12 @@ class FaceRecognitionApp:
         if save_results:
             result_img_path = os.path.join(result_folder, "results", os.path.basename(file_path))
             cv2.imwrite(result_img_path, result_img)
+            
+        # Update status with face detection results
+        if len(faces) > 0:
+            self.update_status(f"Detected {len(faces)} {'face' if len(faces) == 1 else 'faces'} in {os.path.basename(file_path)}", "face")
+        else:
+            self.update_status(f"No faces detected in {os.path.basename(file_path)}", "info")
 
         return faces
 
@@ -341,7 +387,12 @@ class FaceRecognitionApp:
     def download_yolo_model(model_name):
         if not os.path.exists(model_name):
             print(f"Downloading {model_name}...")
-            base_url = "https://github.com/akanametov/yolo-face/releases/download/v0.0.0/"
+            
+            if "yolov8" in model_name:
+                base_url = "https://github.com/akanametov/yolo-face/releases/download/v0.0.0/"
+            elif "yolov11" in model_name:
+                base_url = "https://github.com/akanametov/yolo-face/releases/download/v0.1.0/"
+            
             file_url = base_url + model_name
             
             try:
@@ -360,16 +411,16 @@ class FaceRecognitionApp:
                         size = file.write(data)
                         progress_bar.update(size)
                 
-                print(f"{model_name} downloaded successfully.")
+                print(f"✅ {model_name} downloaded successfully.")
             except Exception as e:
-                print(f"Error downloading {model_name}: {e}")
+                print(f"❌ Error downloading {model_name}: {e}")
                 raise
         else:
-            print(f"{model_name} already exists.")
+            print(f"ℹ️ {model_name} already exists.")
         return model_name
 
-    # Recognize faces
-    def recognize_faces(self):
+    # Detect faces
+    def detect_faces(self):
         headers = ['filename', 'face_detected', 'face_count']
         summary_headers = ['path', 'type', 'total_processed_frames', 'total_duration', 'processed_frames_with_faces', 'face_percentage', 'model', 'confidence_threshold']
         max_faces = 0
@@ -385,11 +436,11 @@ class FaceRecognitionApp:
         for idx, file_path in enumerate(self.file_paths):
             print(f"Processing file {idx + 1}/{total_files}: {file_path}")
             if os.path.isdir(file_path):
-                summary = self.recognize_faces_in_folder(file_path, result_folder)
+                summary = self.detect_faces_in_folder(file_path, result_folder)
             elif file_path.lower().endswith(('.mp4', '.avi', '.mov')):
-                summary = self.recognize_faces_in_video(file_path, result_folder)
+                summary = self.detect_faces_in_video(file_path, result_folder)
             elif file_path.lower().endswith(('.jpg', '.jpeg', '.png', '.bmp')):
-                if self.model_type == "YOLOv8":
+                if self.model_type == "YOLOv8" or self.model_type == "YOLOv11":
                     faces = self.recognize_with_yolo(file_path, result_folder)
                 else:
                     faces = self.recognize_with_retinaface(file_path, result_folder)
@@ -438,8 +489,8 @@ class FaceRecognitionApp:
                     else:  # If summary is a single list
                         writer.writerow(summary)
 
-        self.update_status("Face recognition completed successfully!")
-        messagebox.showinfo("Completed", "Face recognition completed successfully!")
+        self.update_status("Face detection completed successfully!", "complete")
+        messagebox.showinfo("Completed", "Face detection completed successfully!")
         self.start_button.config(state=tk.NORMAL)
         
         # Open results folder
@@ -449,9 +500,9 @@ class FaceRecognitionApp:
         sys.stdout = TextRedirector(self.result_text)
         sys.stderr = TextRedirector(self.result_text)
 
-    # Recognize faces in video
-    def recognize_faces_in_video(self, video_path, result_folder):
-        self.update_status(f"Processing video: {video_path}")
+    # Detect faces in video
+    def detect_faces_in_video(self, video_path, result_folder):
+        self.update_status(f"Processing video: {video_path}", "video")
         cap = cv2.VideoCapture(video_path)
         frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
         fps = cap.get(cv2.CAP_PROP_FPS)
@@ -476,9 +527,9 @@ class FaceRecognitionApp:
                 temp_file_path = os.path.join(result_folder, f'{os.path.splitext(os.path.basename(video_path))[0]}_{os.path.splitext(os.path.basename(video_path))[1][1:]}_{frame_idx}_{int(frame_idx / fps)+1}.jpg')
                 cv2.imwrite(temp_file_path, frame)
 
-                if self.model_type == "YOLOv8":
+                if self.model_type == "YOLOv8" or self.model_type == "YOLOv11":
                     detected_faces = self.recognize_with_yolo(temp_file_path, result_folder, save_results=True)
-                elif self.model_type == "RetinaFace":
+                else:
                     detected_faces = self.recognize_with_retinaface(temp_file_path, result_folder, save_results=True)
 
                 os.remove(temp_file_path)
@@ -524,9 +575,9 @@ class FaceRecognitionApp:
 
         return [os.path.basename(video_path), "video", processed_frames, duration, frames_with_faces, face_percentage, self.model_path, self.confidence]
 
-    # Recognize faces in folder
-    def recognize_faces_in_folder(self, folder_path, result_folder):
-        self.update_status(f"Processing folder: {folder_path}")
+    # Detect faces in folder
+    def detect_faces_in_folder(self, folder_path, result_folder):
+        self.update_status(f"Processing folder: {folder_path}", "folder")
         summary_data = []
         image_files = []
         for root, _, files in os.walk(folder_path):
@@ -535,7 +586,7 @@ class FaceRecognitionApp:
                     image_files.append(os.path.join(root, file))
         # Update status showing how many images are found
         if len(image_files) > 0:
-            self.update_status(f"Found {len(image_files)} images in folder.")
+            self.update_status(f"Found {len(image_files)} images in folder.", "image")
             
         video_files = []
         total_video_frames = 0
@@ -545,7 +596,7 @@ class FaceRecognitionApp:
                 if file.lower().endswith(('.mp4', '.avi', '.mov')):
                     video_files.append(os.path.join(root, file))
         if len(video_files) > 0:
-            self.update_status(f"Found {len(video_files)} videos in folder.")
+            self.update_status(f"Found {len(video_files)} videos in folder.", "video")
             for video_file in video_files:
                 cap = cv2.VideoCapture(video_file)
                 total_video_frames += int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
@@ -561,9 +612,9 @@ class FaceRecognitionApp:
         
         # Image processing
         for idx, image_file in enumerate(image_files):
-            self.update_status(f"Processing image {idx + 1}/{len(image_files)}: {image_file}")
+            self.update_status(f"Processing image {idx + 1}/{len(image_files)}: {image_file}", "image")
             file_path = os.path.join(folder_path, image_file)
-            if self.model_type == "YOLOv8":
+            if self.model_type == "YOLOv8" or self.model_type == "YOLOv11":
                 detected_faces = self.recognize_with_yolo(file_path, result_folder, save_results=True)
                 
             elif self.model_type == "RetinaFace":
@@ -604,7 +655,7 @@ class FaceRecognitionApp:
         total_processed_video_frames = 0
         
         for idx, video_file in enumerate(video_files):
-            self.update_status(f"Processing video {idx + 1}/{len(video_files)}: {video_file}")
+            self.update_status(f"Processing video {idx + 1}/{len(video_files)}: {video_file}", "video")
             cap = cv2.VideoCapture(video_file)
             frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
             fps = cap.get(cv2.CAP_PROP_FPS)
@@ -623,7 +674,7 @@ class FaceRecognitionApp:
                 temp_file_path = os.path.join(result_folder, f'{os.path.splitext(os.path.basename(video_file))[0]}_{os.path.splitext(os.path.basename(video_file))[1][1:]}_{frame_idx}_{int(frame_idx / fps)+1}.jpg')
                 cv2.imwrite(temp_file_path, frame)
 
-                if self.model_type == "YOLOv8":
+                if self.model_type == "YOLOv8" or self.model_type == "YOLOv11":
                     detected_faces = self.recognize_with_yolo(temp_file_path, result_folder, save_results=True)
                 elif self.model_type == "RetinaFace":
                     detected_faces = self.recognize_with_retinaface(temp_file_path, result_folder, save_results=True)
@@ -680,9 +731,13 @@ class FaceRecognitionApp:
 
         return summary_data
 
-    def update_status(self, message):
+    def update_status(self, message, status_type="info"):
+        """Update status with Unicode art based on message type"""
+        symbol = self.status_symbols.get(status_type, self.status_symbols["info"])
+        formatted_message = f"{symbol} {message}"
+        
         self.result_text.configure(state='normal')
-        self.result_text.insert(tk.END, f"{message}\n")
+        self.result_text.insert(tk.END, f"{formatted_message}\n")
         self.result_text.see(tk.END)
         self.result_text.configure(state='disabled')
         self.root.update_idletasks()
@@ -697,7 +752,7 @@ def main():
         pyi_splash.close()
         
     root = tk.Tk()
-    root.title("TinyExplorer FaceRecognitionApp")
+    root.title("TinyExplorer Face Detection App")
 
     
     icon_path = resource_path("graphics/icon_Z71_icon.png")
@@ -708,7 +763,7 @@ def main():
         print(f"Icon file found at {icon_path}")
     else:
         logger.warning(f"Icon file not found at {icon_path}")
-    app = FaceRecognitionApp(root)
+    app = FaceDetectionApp(root)
     root.mainloop()
 
 if __name__ == "__main__":

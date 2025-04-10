@@ -1,0 +1,21 @@
+name: face_rec
+channels:
+  - pytorch
+  - nvidia
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.10
+  - pip=23.1
+  - pandas
+  - numpy
+  - opencv
+  - pytorch
+  - torchvision
+  - torchaudio
+  - pytorch-cuda=12.1
+  - pip:
+    - retinaface
+    - ultralytics
+    - tqdm
+    - requests 
