@@ -1,35 +1,51 @@
 # -*- mode: python ; coding: utf-8 -*-
 
+import os
+
 block_cipher = None
 
-# Define all the YOLO model files - each model that might be used
+# Define data directory models
+data_dir = os.path.join(os.path.abspath('.'), 'data')
+graphics_dir = os.path.join(os.path.abspath('.'), 'graphics')
+
+# Model files to include
 model_files = [
-    ('data/yolov8n-face.pt', './data/yolov8n-face.pt', 'DATA'),
-    ('data/yolov8m-face.pt', './data/yolov8m-face.pt', 'DATA'),
-    ('data/yolov8l-face.pt', './data/yolov8l-face.pt', 'DATA'),
-    ('data/yolov11m-face.pt', './data/yolov11m-face.pt', 'DATA'),
-    ('data/yolov11l-face.pt', './data/yolov11l-face.pt', 'DATA'),
+    os.path.join(data_dir, 'yolov8n-face.pt'),
+    os.path.join(data_dir, 'yolov8m-face.pt'),
+    os.path.join(data_dir, 'yolov8l-face.pt'),
+    os.path.join(data_dir, 'yolov11m-face.pt'),
+    os.path.join(data_dir, 'yolov11l-face.pt'),
 ]
 
-# Icon files
-icon_files = [
-    ('graphics/icon_Z71_icon.ico', './graphics/icon_Z71_icon.ico', 'DATA'),
-    ('graphics/icon_Z71_icon.png', './graphics/icon_Z71_icon.png', 'DATA'),
+# Graphics files to include
+graphics_files = [
+    os.path.join(graphics_dir, 'icon_Z71_icon.ico'),
+    os.path.join(graphics_dir, 'icon_Z71_icon.png'),
+    os.path.join(graphics_dir, 'toolbox_splash.png'),
 ]
+
+# Collect all data files
+datas = []
+
+# Add model files if they exist
+for model_file in model_files:
+    if os.path.exists(model_file):
+        datas.append((model_file, 'data'))
+    else:
+        print(f"Warning: Model file {model_file} not found")
+
+# Add graphics files if they exist
+for graphics_file in graphics_files:
+    if os.path.exists(graphics_file):
+        datas.append((graphics_file, 'graphics'))
+    else:
+        print(f"Warning: Graphics file {graphics_file} not found")
 
 a = Analysis(
     ['main.py'],
     pathex=[],
     binaries=[],
-    datas=[
-        ('data/yolov8n-face.pt', 'data'),
-        ('data/yolov8m-face.pt', 'data'),
-        ('data/yolov8l-face.pt', 'data'),
-        ('data/yolov11m-face.pt', 'data'),
-        ('data/yolov11l-face.pt', 'data'),
-        ('graphics/icon_Z71_icon.ico', 'graphics'),
-        ('graphics/icon_Z71_icon.png', 'graphics'),
-    ],
+    datas=datas,
     hiddenimports=[
         'ultralytics', 
         'ultralytics.nn.tasks',
@@ -46,12 +62,14 @@ a = Analysis(
         'requests',
         'tqdm',
         'pytz',
+        'matplotlib',
+        'matplotlib.pyplot',
+        'pyi_splash',
     ],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
     excludes=[
-        'matplotlib', 
         'notebook', 
         'scipy.optimize', 
         'scipy.signal', 
@@ -94,4 +112,5 @@ exe = EXE(
     entitlements_file=None,
     icon=['graphics/icon_Z71_icon.ico'],
     version='file_version_info.txt',
+    splash='graphics/toolbox_splash.png',
 )

@@ -7,3 +7,4 @@ tqdm
 retina-face
 tf-keras
 pytz
+matplotlib

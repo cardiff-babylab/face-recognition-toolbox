@@ -3,6 +3,10 @@ import csv
 import tkinter as tk
 from tkinter import filedialog, ttk, messagebox
 import pandas as pd
+# Only set TensorFlow environment variables for logging
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'  # Suppress TensorFlow logging
+
+# Import packages after environment setup
 from retinaface import RetinaFace
 from ultralytics import YOLO
 from threading import Thread
@@ -18,6 +22,16 @@ from tqdm import tqdm
 import threading
 import logging
 import numpy
+import tensorflow as tf
+
+# Close splash screen at startup (if running as compiled app)
+try:
+    import pyi_splash
+    pyi_splash.update_text('Loading application...')
+    pyi_splash.close()
+except (ImportError, ModuleNotFoundError, RuntimeError):
+    # Not running as compiled app with splash screen, or splash screen failed to initialize
+    pass
 
 print("Python version")
 print(sys.version)
@@ -289,17 +303,114 @@ class FaceDetectionApp:
         Thread(target=self.detect_faces).start()
 
     def download_and_init_model(self):
-        self.update_status("Downloading and initializing model...", "download")
-        if "yolov8" in self.model_path.lower() or "yolov11" in self.model_path.lower():
-            FaceDetectionApp.download_yolo_model(self.model_path)
-            self.model = YOLO(self.model_path).to('cuda:0' if torch.cuda.is_available() else 'cpu')
+        self.update_status("Initializing model...", "info")
+        
+        # Always use models from the data directory
+        model_filename = os.path.basename(self.model_path)
+        data_model_path = os.path.join('data', model_filename)
+        
+        # For PyInstaller bundled app, use resource_path
+        bundled_model_path = resource_path(data_model_path)
+        
+        if self.model_type == "RetinaFace":
+            # RetinaFace doesn't need a local model file, it's loaded via the package
+            try:
+                # For packaged apps, use special handling
+                if getattr(sys, 'frozen', False):
+                    self.update_status("Initializing RetinaFace in packaged mode...", "info")
+                    
+                    # Configure TensorFlow for packaged environment
+                    if hasattr(tf.compat.v1, 'disable_eager_execution'):
+                        self.update_status("Configuring TensorFlow for packaged environment...", "info")
+                        # Only disable eager execution in packaged mode
+                        tf.compat.v1.disable_eager_execution()
+                        # Force inference mode
+                        tf.keras.backend.set_learning_phase(0)
+                    
+                    # Use a very small test image
+                    test_img = numpy.zeros((224, 224, 3), dtype=numpy.uint8)
+                    _ = RetinaFace.detect_faces(test_img, threshold=0.9)
+                    self.update_status("Successfully initialized RetinaFace in packaged mode", "success")
+                else:
+                    # Running as normal Python script - use default config
+                    self.update_status("Initializing RetinaFace in standard mode...", "info")
+                    test_img = numpy.zeros((100, 100, 3), dtype=numpy.uint8)
+                    _ = RetinaFace.detect_faces(test_img)
+                    self.update_status("Successfully initialized RetinaFace", "success")
+            except Exception as e:
+                error_msg = str(e)
+                self.update_status(f"Error initializing RetinaFace: {error_msg}", "error")
+                
+                # Try fallback initialization for packaged app
+                if getattr(sys, 'frozen', False):
+                    try:
+                        self.update_status("Attempting fallback initialization for RetinaFace...", "info")
+                        
+                        # If error contains KerasTensor, apply specific workaround
+                        if "KerasTensor" in error_msg:
+                            self.update_status("Applying KerasTensor workaround...", "info")
+                            
+                            # Reset TensorFlow graph and session
+                            tf.compat.v1.reset_default_graph()
+                            tf.compat.v1.keras.backend.clear_session()
+                            
+                            # Force inference mode
+                            tf.keras.backend.set_learning_phase(0)
+                            
+                            # Try to monkey patch RetinaFace for packaged environment
+                            try:
+                                # Create a patch for the keras tensor issue
+                                from retinaface.commons import postprocess
+                                original_fn = postprocess.tf_fn
+                                
+                                def wrapped_tf_fn(tensor):
+                                    # Handle both tensor types
+                                    if hasattr(tensor, 'numpy'):
+                                        return tensor.numpy()
+                                    return original_fn(tensor)
+                                
+                                # Apply the patch
+                                postprocess.tf_fn = wrapped_tf_fn
+                                self.update_status("Applied TensorFlow function patch", "info")
+                            except Exception as patch_error:
+                                self.update_status(f"Could not apply patch: {str(patch_error)}", "warning")
+                        
+                        # Try with a real image instead of zeros
+                        test_img = numpy.ones((300, 300, 3), dtype=numpy.uint8) * 128
+                        _ = RetinaFace.detect_faces(test_img, threshold=0.9)
+                        self.update_status("Successfully initialized RetinaFace with fallback method", "success")
+                    except Exception as fallback_error:
+                        self.update_status(f"Fallback also failed: {str(fallback_error)}", "error")
+                        messagebox.showerror("Error", 
+                                           f"RetinaFace initialization failed.\n\nError details: {error_msg}\n\nPlease try a YOLO model instead.")
+                        self.start_button.config(state=tk.NORMAL)
+                        return
+                else:
+                    # In standard mode, just show the error
+                    messagebox.showerror("Error", f"Failed to initialize RetinaFace: {error_msg}")
+                    self.start_button.config(state=tk.NORMAL)
+                    return
         else:
-            # Initialize RetinaFace model if needed
-            pass
+            # For YOLO models, check if file exists
+            if os.path.exists(bundled_model_path):
+                self.update_status(f"Using model: {bundled_model_path}", "info")
+                self.model_path = bundled_model_path
+            else:
+                # If not found in bundled path, try regular path
+                if os.path.exists(data_model_path):
+                    self.update_status(f"Using model: {data_model_path}", "info")
+                    self.model_path = data_model_path
+                else:
+                    raise FileNotFoundError(f"Model file not found in data folder: {model_filename}")
+            
+            # Initialize YOLO model
+            if "yolov8" in self.model_path.lower() or "yolov11" in self.model_path.lower():
+                self.model = YOLO(self.model_path).to('cuda:0' if torch.cuda.is_available() else 'cpu')
+                self.update_status(f"Successfully loaded model: {self.model_path}", "success")
 
     def recognize_with_yolo(self, file_path, result_folder, save_results=True):
-        model = YOLO(self.model_path).to('cuda:0' if torch.cuda.is_available() else 'cpu')
-        results = model.predict(source=file_path, conf=self.confidence, save=save_results, save_txt=save_results, save_conf=save_results)
+        # Use the existing model instance instead of creating a new one
+        results = self.model.predict(source=file_path, conf=self.confidence, save=save_results, save_txt=save_results, save_conf=save_results)
         
         # Copy results to the new result folder
         if results and results[0].save_dir and save_results:
@@ -341,32 +452,129 @@ class FaceDetectionApp:
 
     # Recognize using RetinaFace
     def recognize_with_retinaface(self, file_path, result_folder, save_results=True):
-        img = cv2.imread(file_path)
-        detections = RetinaFace.detect_faces(img, threshold=self.confidence)
-        result_img = img.copy()
-
-        faces = []
-        for key, detection in detections.items():
-            facial_area = detection["facial_area"]
-            confidence = detection["score"]
-            x, y, w, h = facial_area[0], facial_area[1], facial_area[2] - facial_area[0], facial_area[3] - facial_area[1]
-            faces.append({'confidence': confidence, 'x': x, 'y': y, 'width': w, 'height': h})
-            if save_results:
-                cv2.rectangle(result_img, (x, y), (x + w, y + h), (0, 255, 0), 2)
-                cv2.putText(result_img, f"{confidence:.2f}", (x, y - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1)
-
-        # Save result image
-        if save_results:
-            result_img_path = os.path.join(result_folder, "results", os.path.basename(file_path))
-            cv2.imwrite(result_img_path, result_img)
+        try:
+            self.update_status(f"Processing with RetinaFace: {os.path.basename(file_path)}", "info")
+            img = cv2.imread(file_path)
+            if img is None:
+                self.update_status(f"Error: Could not read image file: {file_path}", "error")
+                return []
             
-        # Update status with face detection results
-        if len(faces) > 0:
-            self.update_status(f"Detected {len(faces)} {'face' if len(faces) == 1 else 'faces'} in {os.path.basename(file_path)}", "face")
-        else:
-            self.update_status(f"No faces detected in {os.path.basename(file_path)}", "info")
+            # Handle packaged mode differently
+            if getattr(sys, 'frozen', False):
+                try:
+                    # Reset the TensorFlow session for each detection to avoid memory issues
+                    tf.keras.backend.clear_session()
+                    
+                    # Resize large images for better performance in packaged mode
+                    max_size = 1200  # Maximum dimension for the image
+                    height, width = img.shape[:2]
+                    
+                    # Only resize if the image is very large
+                    if max(height, width) > max_size:
+                        scale = max_size / max(height, width)
+                        new_height = int(height * scale)
+                        new_width = int(width * scale)
+                        self.update_status(f"Resizing large image for detection ({width}x{height} → {new_width}x{new_height})", "info")
+                        img_resized = cv2.resize(img, (new_width, new_height))
+                        
+                        # Use a higher threshold in packaged mode
+                        detections = RetinaFace.detect_faces(img_resized, threshold=max(0.8, self.confidence))
+                        
+                        # Scale detection results back to original image size
+                        scaled_detections = {}
+                        for key, detection in detections.items():
+                            facial_area = detection["facial_area"]
+                            scaled_facial_area = [
+                                int(facial_area[0] / scale),
+                                int(facial_area[1] / scale),
+                                int(facial_area[2] / scale),
+                                int(facial_area[3] / scale)
+                            ]
+                            detection["facial_area"] = scaled_facial_area
+                            scaled_detections[key] = detection
+                            
+                        detections = scaled_detections
+                    else:
+                        # Not resizing, use original image
+                        detections = RetinaFace.detect_faces(img, threshold=max(0.8, self.confidence))
+                        
+                except Exception as e:
+                    self.update_status(f"Error in packaged detection: {str(e)}", "error")
+                    detections = {}
+            else:
+                # Standard execution mode - use normal settings
+                detections = RetinaFace.detect_faces(img, threshold=self.confidence)
+            
+            if not detections:
+                self.update_status(f"No faces detected in {os.path.basename(file_path)}", "info")
+                return []
+                
+            result_img = img.copy()
 
-        return faces
+            faces = []
+            for key, detection in detections.items():
+                facial_area = detection["facial_area"]
+                confidence = detection["score"]
+                x, y, w, h = facial_area[0], facial_area[1], facial_area[2] - facial_area[0], facial_area[3] - facial_area[1]
+                faces.append({'confidence': confidence, 'x': x, 'y': y, 'width': w, 'height': h})
+                if save_results:
+                    cv2.rectangle(result_img, (x, y), (x + w, y + h), (0, 255, 0), 2)
+                    cv2.putText(result_img, f"{confidence:.2f}", (x, y - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1)
+
+            # Save result image
+            if save_results:
+                # Create subdirectories if they don't exist
+                result_img_dir = os.path.join(result_folder, "results")
+                os.makedirs(result_img_dir, exist_ok=True)
+                result_img_path = os.path.join(result_img_dir, os.path.basename(file_path))
+                cv2.imwrite(result_img_path, result_img)
+                
+            # Update status with face detection results
+            if len(faces) > 0:
+                self.update_status(f"Detected {len(faces)} {'face' if len(faces) == 1 else 'faces'} in {os.path.basename(file_path)}", "face")
+            
+            return faces
+            
+        except Exception as e:
+            error_msg = str(e)
+            self.update_status(f"Error processing with RetinaFace: {error_msg}", "error")
+            
+            # Additional details for debugging
+            if "KerasTensor" in error_msg:
+                self.update_status("This appears to be a TensorFlow compatibility issue.", "error")
+                
+            # In normal mode, we might want to try a different approach
+            if not getattr(sys, 'frozen', False):
+                self.update_status("Attempting alternative detection approach...", "info")
+                try:
+                    # Try with a more basic approach
+                    img = cv2.imread(file_path)
+                    if img is None:
+                        return []
+                        
+                    # Clear the session
+                    tf.keras.backend.clear_session()
+                    
+                    # Try with higher threshold
+                    detections = RetinaFace.detect_faces(img, threshold=0.9)
+                    
+                    if not detections:
+                        return []
+                        
+                    faces = []
+                    for key, detection in detections.items():
+                        facial_area = detection["facial_area"]
+                        confidence = detection["score"]
+                        x, y, w, h = facial_area[0], facial_area[1], facial_area[2] - facial_area[0], facial_area[3] - facial_area[1]
+                        faces.append({'confidence': confidence, 'x': x, 'y': y, 'width': w, 'height': h})
+                        
+                    return faces
+                    
+                except Exception as alt_error:
+                    self.update_status(f"Alternative approach also failed: {str(alt_error)}", "error")
+                    return []
+            
+            return []
 
     # Show results
     def show_results(self, csv_file):
@@ -382,42 +590,6 @@ class FaceDetectionApp:
             os.startfile(path)
         elif os.name == 'posix':
             subprocess.Popen(['xdg-open', path])
-
-    @staticmethod
-    def download_yolo_model(model_name):
-        if not os.path.exists(model_name):
-            print(f"Downloading {model_name}...")
-            
-            if "yolov8" in model_name:
-                base_url = "https://github.com/akanametov/yolo-face/releases/download/v0.0.0/"
-            elif "yolov11" in model_name:
-                base_url = "https://github.com/akanametov/yolo-face/releases/download/v0.1.0/"
-            
-            file_url = base_url + model_name
-            
-            try:
-                response = requests.get(file_url, stream=True)
-                response.raise_for_status()
-                total_size = int(response.headers.get('content-length', 0))
-                
-                with open(model_name, 'wb') as file, tqdm(
-                    desc=model_name,
-                    total=total_size,
-                    unit='iB',
-                    unit_scale=True,
-                    unit_divisor=1024,
-                ) as progress_bar:
-                    for data in response.iter_content(chunk_size=1024):
-                        size = file.write(data)
-                        progress_bar.update(size)
-                
-                print(f"✅ {model_name} downloaded successfully.")
-            except Exception as e:
-                print(f"❌ Error downloading {model_name}: {e}")
-                raise
-        else:
-            print(f"ℹ️ {model_name} already exists.")
-        return model_name
 
     # Detect faces
     def detect_faces(self):
@@ -511,59 +683,57 @@ class FaceDetectionApp:
         # Calculate the number of frames to skip to get 1 frame per second
         frames_to_skip = int(fps)
 
-        # faces = []
         frames_with_faces = 0
         processed_frames = 0
         results = []
         video_faces = 0
+        
         for frame_idx in range(0, frame_count, frames_to_skip):
-                cap.set(cv2.CAP_PROP_POS_FRAMES, frame_idx)
-                ret, frame = cap.read()
-                if not ret:
-                    break
+            cap.set(cv2.CAP_PROP_POS_FRAMES, frame_idx)
+            ret, frame = cap.read()
+            if not ret:
+                break
 
-                processed_frames += 1
-                # total_processed_video_frames += 1
-                temp_file_path = os.path.join(result_folder, f'{os.path.splitext(os.path.basename(video_path))[0]}_{os.path.splitext(os.path.basename(video_path))[1][1:]}_{frame_idx}_{int(frame_idx / fps)+1}.jpg')
-                cv2.imwrite(temp_file_path, frame)
+            processed_frames += 1
+            temp_file_path = os.path.join(result_folder, f'{os.path.splitext(os.path.basename(video_path))[0]}_{frame_idx}.jpg')
+            cv2.imwrite(temp_file_path, frame)
 
-                if self.model_type == "YOLOv8" or self.model_type == "YOLOv11":
-                    detected_faces = self.recognize_with_yolo(temp_file_path, result_folder, save_results=True)
-                else:
-                    detected_faces = self.recognize_with_retinaface(temp_file_path, result_folder, save_results=True)
+            if self.model_type == "YOLOv8" or self.model_type == "YOLOv11":
+                detected_faces = self.recognize_with_yolo(temp_file_path, result_folder, save_results=True)
+            else:
+                detected_faces = self.recognize_with_retinaface(temp_file_path, result_folder, save_results=True)
 
-                os.remove(temp_file_path)
+            os.remove(temp_file_path)
 
-                num_faces = len(detected_faces) if detected_faces else 0
-                video_faces += num_faces
-                if num_faces > 0:
-                    frames_with_faces += 1
+            num_faces = len(detected_faces) if detected_faces else 0
+            video_faces += num_faces
+            if num_faces > 0:
+                frames_with_faces += 1
 
-                    row = {
-                        'filename': f'{os.path.basename(video_path)}_{frame_idx}_{int(frame_idx / fps)+1}',
-                        'face_detected': 1 if num_faces > 0 else 0,
-                        'face_count': num_faces
-                    }
+                row = {
+                    'filename': f'{os.path.splitext(os.path.basename(video_path))[0]}_{frame_idx}.jpg',
+                    'face_detected': 1,
+                    'face_count': num_faces
+                }
 
-                    for i, face in enumerate(detected_faces or [], start=1):
-                        row[f'face{i}_x'] = face['x']
-                        row[f'face{i}_y'] = face['y']
-                        row[f'face{i}_width'] = face['width']
-                        row[f'face{i}_height'] = face['height']
-                        row[f'face{i}_confidence'] = face['confidence']
-                        
-                    results.append(row)
-
-                else:
-                    results.append({
-                    'filename': f'{os.path.splitext(os.path.basename(video_path))[0]}_{os.path.splitext(os.path.basename(video_path))[1][1:]}_{frame_idx}_{int(frame_idx / fps)+1}.jpg',
-                    'face_detected': 0,
-                    'face_count': 0
+                for i, face in enumerate(detected_faces or [], start=1):
+                    row[f'face{i}_x'] = face['x']
+                    row[f'face{i}_y'] = face['y']
+                    row[f'face{i}_width'] = face['width']
+                    row[f'face{i}_height'] = face['height']
+                    row[f'face{i}_confidence'] = face['confidence']
+                    
+                results.append(row)
+            else:
+                results.append({
+                'filename': f'{os.path.splitext(os.path.basename(video_path))[0]}_{frame_idx}.jpg',
+                'face_detected': 0,
+                'face_count': 0
                 })
 
-                # Update progress bar
-                progress_percent = (processed_frames / (duration)) * 100
-                self.update_progress(progress_percent)
+            # Update progress bar
+            progress_percent = (processed_frames / (duration)) * 100
+            self.update_progress(progress_percent)
 
         cap.release()
 
@@ -579,15 +749,19 @@ class FaceDetectionApp:
     def detect_faces_in_folder(self, folder_path, result_folder):
         self.update_status(f"Processing folder: {folder_path}", "folder")
         summary_data = []
+        
+        # Find all image files in the folder
         image_files = []
         for root, _, files in os.walk(folder_path):
             for file in files:
                 if file.lower().endswith(('.jpg', '.jpeg', '.png', '.bmp')):
                     image_files.append(os.path.join(root, file))
+                    
         # Update status showing how many images are found
         if len(image_files) > 0:
             self.update_status(f"Found {len(image_files)} images in folder.", "image")
             
+        # Find all video files in the folder
         video_files = []
         total_video_frames = 0
         
@@ -595,6 +769,7 @@ class FaceDetectionApp:
             for file in files:
                 if file.lower().endswith(('.mp4', '.avi', '.mov')):
                     video_files.append(os.path.join(root, file))
+                    
         if len(video_files) > 0:
             self.update_status(f"Found {len(video_files)} videos in folder.", "video")
             for video_file in video_files:
@@ -602,31 +777,28 @@ class FaceDetectionApp:
                 total_video_frames += int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
                 cap.release()
             
-        # total_frames = len(image_files) + total_video_frames
-        
         images_with_faces = 0      
         frames_with_faces = 0
         total_processed_video_frames = 0
-        # faces = []
         results = []
         
-        # Image processing
+        # Process image files
         for idx, image_file in enumerate(image_files):
-            self.update_status(f"Processing image {idx + 1}/{len(image_files)}: {image_file}", "image")
-            file_path = os.path.join(folder_path, image_file)
+            self.update_status(f"Processing image {idx + 1}/{len(image_files)}: {os.path.basename(image_file)}", "image")
+            
             if self.model_type == "YOLOv8" or self.model_type == "YOLOv11":
-                detected_faces = self.recognize_with_yolo(file_path, result_folder, save_results=True)
-                
+                detected_faces = self.recognize_with_yolo(image_file, result_folder, save_results=True)
             elif self.model_type == "RetinaFace":
-                detected_faces = self.recognize_with_retinaface(file_path, result_folder, save_results=True)
+                detected_faces = self.recognize_with_retinaface(image_file, result_folder, save_results=True)
 
-            if detected_faces:
-                num_faces = len(detected_faces)
+            num_faces = len(detected_faces) if detected_faces else 0
+            
+            if num_faces > 0:
                 images_with_faces += 1
                 
                 row = {
                     'filename': os.path.basename(image_file),
-                    'face_detected': 1 if num_faces > 0 else 0,
+                    'face_detected': 1,
                     'face_count': num_faces
                 }
                 
@@ -644,25 +816,26 @@ class FaceDetectionApp:
                     'face_detected': 0,
                     'face_count': 0
                 })
-            # update progress bar
+                
+            # Update progress bar
             progress_percent = ((idx + 1) / len(image_files)) * 100
             self.update_progress(progress_percent)
             
-        # Video processing
-        # total_duration = 0
-        total_duration = sum(cv2.VideoCapture(video_file).get(cv2.CAP_PROP_FRAME_COUNT) / cv2.VideoCapture(video_file).get(cv2.CAP_PROP_FPS) for video_file in video_files)
-        frames_with_faces = 0
-        total_processed_video_frames = 0
+        # Process video files
+        total_duration = 0
+        if video_files:
+            total_duration = sum(cv2.VideoCapture(video_file).get(cv2.CAP_PROP_FRAME_COUNT) / cv2.VideoCapture(video_file).get(cv2.CAP_PROP_FPS) 
+                            for video_file in video_files)
         
         for idx, video_file in enumerate(video_files):
-            self.update_status(f"Processing video {idx + 1}/{len(video_files)}: {video_file}", "video")
+            self.update_status(f"Processing video {idx + 1}/{len(video_files)}: {os.path.basename(video_file)}", "video")
             cap = cv2.VideoCapture(video_file)
             frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
             fps = cap.get(cv2.CAP_PROP_FPS)
             duration = frame_count / fps
-            # total_duration += duration
-                # Calculate the number of frames to skip to get 1 frame per second
-            frames_to_skip = int(fps)
+            
+            # Calculate the number of frames to skip to get 1 frame per second
+            frames_to_skip = max(1, int(fps))
 
             for frame_idx in range(0, frame_count, frames_to_skip):
                 cap.set(cv2.CAP_PROP_POS_FRAMES, frame_idx)
@@ -671,7 +844,7 @@ class FaceDetectionApp:
                     break
 
                 total_processed_video_frames += 1
-                temp_file_path = os.path.join(result_folder, f'{os.path.splitext(os.path.basename(video_file))[0]}_{os.path.splitext(os.path.basename(video_file))[1][1:]}_{frame_idx}_{int(frame_idx / fps)+1}.jpg')
+                temp_file_path = os.path.join(result_folder, f'{os.path.splitext(os.path.basename(video_file))[0]}_{frame_idx}.jpg')
                 cv2.imwrite(temp_file_path, frame)
 
                 if self.model_type == "YOLOv8" or self.model_type == "YOLOv11":
@@ -687,8 +860,8 @@ class FaceDetectionApp:
                     frames_with_faces += 1
 
                     row = {
-                        'filename': f'{os.path.splitext(os.path.basename(video_file))[0]}_{os.path.splitext(os.path.basename(video_file))[1][1:]}_{frame_idx}_{int((frame_idx / fps) + 1)}.jpg',
-                        'face_detected': 1 if num_faces > 0 else 0,
+                        'filename': f'{os.path.splitext(os.path.basename(video_file))[0]}_{frame_idx}.jpg',
+                        'face_detected': 1,
                         'face_count': num_faces
                     }
 
@@ -700,19 +873,20 @@ class FaceDetectionApp:
                         row[f'face{i}_confidence'] = face['confidence']
                         
                     results.append(row)
-
                 else:
                     results.append({
-                    'filename': f'{os.path.splitext(os.path.basename(video_file))[0]}_{os.path.splitext(os.path.basename(video_file))[1][1:]}_{frame_idx}_{int((frame_idx / fps) + 1)}.jpg',
-                    'face_detected': 0,
-                    'face_count': 0
-                })
+                        'filename': f'{os.path.splitext(os.path.basename(video_file))[0]}_{frame_idx}.jpg',
+                        'face_detected': 0,
+                        'face_count': 0
+                    })
 
                 # Update progress bar
-                progress_percent = (total_processed_video_frames / (total_duration)) * 100
-                self.update_progress(progress_percent)
+                if total_duration > 0:
+                    progress_percent = (total_processed_video_frames / total_duration) * 100
+                    self.update_progress(progress_percent)
 
-            cap.release()               
+            cap.release()
+
         # caclulate face percentage
         if len(image_files) > 0:
             face_percentage_images = (images_with_faces / len(image_files)) * 100 if len(image_files) > 0 else 0
@@ -747,9 +921,13 @@ def main():
     logger.debug("Starting application")
 
     # Close splash screen if using PyInstaller
-    if getattr(sys, 'frozen', False):
-        import pyi_splash
-        pyi_splash.close()
+    try:
+        if getattr(sys, 'frozen', False):
+            import pyi_splash
+            pyi_splash.close()
+    except (ImportError, ModuleNotFoundError, RuntimeError):
+        # Splash screen already closed or not available
+        pass
         
     root = tk.Tk()
     root.title("TinyExplorer Face Detection App")
