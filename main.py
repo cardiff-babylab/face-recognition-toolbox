@@ -586,10 +586,25 @@ class FaceDetectionApp:
 
     # Open results folder
     def open_results_folder(self, path):
-        if os.name == 'nt':
-            os.startfile(path)
-        elif os.name == 'posix':
-            subprocess.Popen(['xdg-open', path])
+        try:
+            if sys.platform == "win32": # More specific check for Windows
+                os.startfile(path)
+            elif sys.platform == "darwin": # Check for macOS
+                subprocess.Popen(['open', path])
+            else: # Assume Linux/other POSIX with xdg-open
+                subprocess.Popen(['xdg-open', path])
+        except FileNotFoundError:
+            # Handle case where 'open' or 'xdg-open' might not be found
+            error_msg = f"Could not automatically open the results folder. Please navigate to: {path}"
+            self.update_status(error_msg, "warning")
+            logger.warning(f"Could not find command to open folder for platform: {sys.platform}")
+            messagebox.showwarning("Info", error_msg)
+        except Exception as e:
+            # Catch other potential errors during folder opening
+            error_msg = f"An error occurred while trying to open the results folder: {e}. Please navigate to: {path}"
+            self.update_status(error_msg, "error")
+            logger.error(f"Error opening results folder: {e}", exc_info=True)
+            messagebox.showerror("Error", error_msg)
 
     # Detect faces
     def detect_faces(self):
@@ -601,9 +616,30 @@ class FaceDetectionApp:
 
         total_files = len(self.file_paths)
         current_time = datetime.now().strftime("%Y%m%d_%H%M%S")
+
+        # Validate save directory within the thread
+        if not self.save_dir or not os.path.isdir(self.save_dir):
+            error_msg = f"Invalid or inaccessible save directory selected: '{self.save_dir}'. Please select a valid folder where the application can write."
+            self.update_status(f"Error: {error_msg}", "error")
+            logger.error(error_msg)
+            # Use messagebox from the main thread if possible or just log and re-enable button
+            self.root.after(0, lambda: messagebox.showerror("Error", error_msg))
+            self.start_button.config(state=tk.NORMAL) # Re-enable button
+            return # Stop the thread
+
         result_folder = os.path.join(self.save_dir, current_time)
-        os.makedirs(result_folder)
-        os.makedirs(os.path.join(result_folder, "results"))
+        logger.debug(f"Attempting to create result folder: {result_folder}")
+
+        try:
+            os.makedirs(result_folder)
+            os.makedirs(os.path.join(result_folder, "results"))
+        except OSError as e:
+            error_msg = f"Failed to create result folder '{result_folder}'. Error: {e}. Check permissions and path validity."
+            self.update_status(f"Error: {error_msg}", "error")
+            logger.error(error_msg)
+            self.root.after(0, lambda: messagebox.showerror("Error", error_msg))
+            self.start_button.config(state=tk.NORMAL) # Re-enable button
+            return # Stop the thread
 
         for idx, file_path in enumerate(self.file_paths):
             print(f"Processing file {idx + 1}/{total_files}: {file_path}")
